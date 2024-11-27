@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>p1 Crystal Packing Visualization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px 20px 20px 270px;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            gap: 40px;
+        }
+        .controls {
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            height: fit-content;
+        }
+        .control-group {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .control-section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2b6cb0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        .slider-value {
+            display: inline-block;
+            margin-left: 10px;
+            min-width: 40px;
+        }
+        .visualization {
+            min-width: 800px;
+        }
+        .overlap-info {
+            margin-top: 4px;
+            font-size: 0.9em;
+            color: #2D3748;
+        }
+        .area-display {
+            display: flex;
+            justify-content: space-around;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            width: 700px;
+        }
+        .area-metric {
+            text-align: center;
+            padding: 0 20px;
+        }
+        .metric-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2b6cb0;
+            margin-top: 5px;
+        }
+        .metric-label {
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>2D Crystal Packing (p1 Symmetry)</h1>
+    <div class="container">
+        <div class="controls">
+            <div class="control-section">
+                <div class="section-title">Unit Cell Parameters</div>
+                <div class="control-group">
+                    <label>Vector a (Å): <span id="vectorAValue">10</span></label>
+                    <input type="range" id="vectorA" min="3" max="20" value="10" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Vector b (Å): <span id="vectorBValue">10</span></label>
+                    <input type="range" id="vectorB" min="3" max="20" value="10" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Cell Angle γ (degrees): <span id="gammaValue">90</span></label>
+                    <input type="range" id="gamma" min="30" max="150" value="90">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-title">Molecule Properties</div>
+                <div class="control-group">
+                    <label>Semi Major Axis: <span id="majorValue">2</span></label>
+                    <input type="range" id="major" min="0.1" max="10" value="2" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Semi Minor Axis: <span id="minorValue">1</span></label>
+                    <input type="range" id="minor" min="0.1" max="10" value="1" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Molecular Rotation (degrees): <span id="rotationValue">0</span></label>
+                    <input type="range" id="rotation" min="0" max="360" value="0">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-title">Position in Unit Cell</div>
+                <div class="control-group">
+                    <label>Position X: <span id="posXValue">50</span>%</label>
+                    <input type="range" id="posX" min="0" max="100" value="50">
+                </div>
+                <div class="control-group">
+                    <label>Position Y: <span id="posYValue">50</span>%</label>
+                    <input type="range" id="posY" min="0" max="100" value="50">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-title">Surface Points</div>
+                <div class="control-group">
+                    <label>Attractive Points: <span id="attPointsValue">1</span></label>
+                    <input type="range" id="attPoints" min="1" max="5" value="1">
+                </div>
+                <div class="control-group">
+                    <label>Repulsive Points: <span id="repPointsValue">1</span></label>
+                    <input type="range" id="repPoints" min="1" max="5" value="1">
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="visualization">
+                <svg id="crystal" width="800" height="800"></svg>
+            </div>
+            <div class="area-display">
+                <div class="area-metric">
+                    <div class="metric-label">Unit Cell Area</div>
+                    <div class="metric-value"><span id="areaValue">100.00</span> Å²</div>
+                </div>
+                <div class="area-metric">
+                    <div class="metric-label">Free Area</div>
+                    <div class="metric-value"><span id="freeAreaValue">75.00</span> Å²</div>
+                </div>
+                <div class="area-metric">
+                    <div class="metric-label">Occupancy</div>
+                    <div class="metric-value"><span id="occupancyValue">25.0</span>%</div>
+                </div>
+                <div class="area-metric">
+                    <div class="metric-label">Overlap</div>
+                    <div class="metric-value"><span id="overlapAreaValue">0.0</span>%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const controls = {
+			vectorA: document.getElementById('vectorA'),
+			vectorB: document.getElementById('vectorB'),
+			gamma: document.getElementById('gamma'),
+			major: document.getElementById('major'),
+			minor: document.getElementById('minor'),
+			rotation: document.getElementById('rotation'),
+			posX: document.getElementById('posX'),
+			posY: document.getElementById('posY'),
+			attPoints: document.getElementById('attPoints'),
+			repPoints: document.getElementById('repPoints')
+		};
+
+		// Store base points
+		const basePoints = {
+			attractive: [],
+			repulsive: []
+		};
+
+		function updateValue(id, value) {
+			document.getElementById(id + 'Value').textContent = Number(value).toFixed(1);
+		}
+
+		// Function to generate initial points on a unit circle
+		function generateInitialPoints() {
+			const maxPoints = 5; // Maximum number of points from the slider
+			
+			// Generate attractive points
+			for (let i = 0; i < maxPoints; i++) {
+				// Generate random angle between 0 and 2π
+				const t = Math.random() * 2 * Math.PI;
+				basePoints.attractive.push({
+					t: t,
+					x: Math.cos(t),
+					y: Math.sin(t)
+				});
+			}
+			
+			// Generate repulsive points
+			for (let i = 0; i < maxPoints; i++) {
+				// Generate random angle between 0 and 2π
+				const t = Math.random() * 2 * Math.PI;
+				basePoints.repulsive.push({
+					t: t,
+					x: Math.cos(t),
+					y: Math.sin(t)
+				});
+			}
+		}
+
+		// Function to transform a point based on current ellipse parameters
+		function transformPoint(point, major, minor, rotationRad) {
+			// Scale the unit circle point to match current ellipse dimensions
+			const scaledX = point.x * major;
+			const scaledY = point.y * minor;
+			
+			// Rotate the point
+			const rotatedX = scaledX * Math.cos(rotationRad) - scaledY * Math.sin(rotationRad);
+			const rotatedY = scaledX * Math.sin(rotationRad) + scaledY * Math.cos(rotationRad);
+			
+			return {
+				x: rotatedX,
+				y: rotatedY
+			};
+		}
+
+		function calculateAreas() {
+			const vectorA = parseFloat(controls.vectorA.value);
+			const vectorB = parseFloat(controls.vectorB.value);
+			const gamma = parseInt(controls.gamma.value);
+			const major = parseFloat(controls.major.value);
+			const minor = parseFloat(controls.minor.value);
+			const rotation = parseInt(controls.rotation.value);
+			const posX = parseInt(controls.posX.value) / 100;
+			const posY = parseInt(controls.posY.value) / 100;
+
+			// Calculate unit cell area
+			const gammaRad = (gamma * Math.PI) / 180;
+			const unitCellArea = vectorA * vectorB * Math.sin(gammaRad);
+
+			// Monte Carlo integration for occupied area
+			const numPoints = 1000000;
+			let occupiedPoints = 0;
+			const rotationRad = (rotation * Math.PI) / 180;
+
+			function isPointInEllipse(px, py, cx, cy, a, b, angleRad) {
+				const translatedX = px - cx;
+				const translatedY = py - cy;
+				const rotatedX = translatedX * Math.cos(-angleRad) - translatedY * Math.sin(-angleRad);
+				const rotatedY = translatedX * Math.sin(-angleRad) + translatedY * Math.cos(-angleRad);
+				return ((rotatedX * rotatedX) / (a * a) + (rotatedY * rotatedY) / (b * b)) <= 1;
+			}
+
+			// Sample points only in the central unit cell
+			for (let i = 0; i < numPoints; i++) {
+				// Generate point in parallelogram unit cell
+				const x = Math.random() * vectorA;
+				const y = Math.random() * (vectorB * Math.sin(gammaRad));
+				
+				// Check if point is in central ellipse only
+				const ellipseX = posX * vectorA + posY * vectorB * Math.cos(gammaRad);
+				const ellipseY = posY * vectorB * Math.sin(gammaRad);
+				
+				if (isPointInEllipse(
+					x, y,
+					ellipseX,
+					ellipseY,
+					major, minor,
+					rotationRad
+				)) {
+					occupiedPoints++;
+				}
+			}
+
+			const occupiedArea = (occupiedPoints / numPoints) * unitCellArea;
+			const freeArea = unitCellArea - occupiedArea;
+			const occupancyRatio = (occupiedArea / unitCellArea) * 100;
+			const overlapArea = Math.PI * major * minor - (occupiedPoints / numPoints) * unitCellArea;
+
+			// Update display
+			document.getElementById('areaValue').textContent = unitCellArea.toFixed(2);
+			document.getElementById('freeAreaValue').textContent = freeArea.toFixed(2);
+			document.getElementById('occupancyValue').textContent = occupancyRatio.toFixed(2);
+			document.getElementById('overlapAreaValue').textContent = overlapArea.toFixed(2);
+		}
+
+		function drawCrystal() {
+			const svg = document.getElementById('crystal');
+			svg.innerHTML = '';
+
+			const vectorA = parseFloat(controls.vectorA.value);
+			const vectorB = parseFloat(controls.vectorB.value);
+			const gamma = parseInt(controls.gamma.value);
+			const major = parseFloat(controls.major.value);
+			const minor = parseFloat(controls.minor.value);
+			const rotation = parseInt(controls.rotation.value);
+			const posX = parseInt(controls.posX.value) / 100;
+			const posY = parseInt(controls.posY.value) / 100;
+
+			const gammaRad = (gamma * Math.PI) / 180;
+			const rotationRad = (rotation * Math.PI) / 180;
+
+			const aVector = { x: vectorA, y: 0 };
+			const bVector = {
+				x: vectorB * Math.cos(gammaRad),
+				y: vectorB * Math.sin(gammaRad)
+			};
+
+			const totalWidth = 3 * (Math.abs(aVector.x) + Math.abs(bVector.x));
+			const totalHeight = 3 * (Math.abs(aVector.y) + Math.abs(bVector.y));
+
+			const scaleFactor = Math.min(700 / totalWidth, 700 / totalHeight);
+
+			const viewBoxWidth = totalWidth * scaleFactor * 1.2;
+			const viewBoxHeight = totalHeight * scaleFactor * 1.2;
+			svg.setAttribute('viewBox', `${-viewBoxWidth/3.2} ${-viewBoxHeight/3.2} ${viewBoxWidth} ${viewBoxHeight}`);
+
+			const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+			g.setAttribute('transform', `scale(${scaleFactor})`);
+			svg.appendChild(g);
+
+			const attPoints = parseInt(controls.attPoints.value);
+			const repPoints = parseInt(controls.repPoints.value);
+
+			const ellipses = [];
+
+			for (let i = -1; i <= 1; i++) {
+				for (let j = -1; j <= 1; j++) {
+					const cellOriginX = i * aVector.x + j * bVector.x;
+					const cellOriginY = i * aVector.y + j * bVector.y;
+
+					const cell = document.createElementNS("http://www.w3.org/2000/svg", "path");
+					cell.setAttribute('d', `M ${cellOriginX} ${cellOriginY} 
+						L ${cellOriginX + aVector.x} ${cellOriginY + aVector.y}
+						L ${cellOriginX + aVector.x + bVector.x} ${cellOriginY + aVector.y + bVector.y}
+						L ${cellOriginX + bVector.x} ${cellOriginY + bVector.y} Z`);
+					cell.setAttribute('fill', 'none');
+					cell.setAttribute('stroke', '#666');
+					cell.setAttribute('stroke-width', '0.04');
+					g.appendChild(cell);
+
+					const ellipseX = cellOriginX + posX * aVector.x + posY * bVector.x;
+					const ellipseY = cellOriginY + posX * aVector.y + posY * bVector.y;
+					
+					ellipses.push({
+						x: ellipseX,
+						y: ellipseY,
+						major: major,
+						minor: minor,
+						rotation: rotation,
+						isCenter: (i === 0 && j === 0)
+					});
+
+					const ellipseGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+					ellipseGroup.setAttribute('transform', `translate(${ellipseX} ${ellipseY}) rotate(${rotation}) translate(${-ellipseX} ${-ellipseY})`);
+					
+					const ellipse = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+					ellipse.setAttribute('cx', ellipseX);
+					ellipse.setAttribute('cy', ellipseY);
+					ellipse.setAttribute('rx', major);
+					ellipse.setAttribute('ry', minor);
+					
+					if (i === 0 && j === 0) {
+						ellipse.setAttribute('fill', '#ADD8E6');
+						ellipse.setAttribute('stroke', '#4682B4');
+					} else {
+						ellipse.setAttribute('fill', `${'#ADD8E6'}88`);
+						ellipse.setAttribute('stroke', `${'#4682B4'}88`);
+					}
+					ellipse.setAttribute('stroke-width', '0.04');
+					ellipse.setAttribute('opacity', '0.9');
+					
+					const indicator = document.createElementNS("http://www.w3.org/2000/svg", "path");
+					indicator.setAttribute('d', `M ${ellipseX + major} ${ellipseY} 
+											   L ${ellipseX} ${ellipseY} 
+											   L ${ellipseX} ${ellipseY + minor}`);
+					indicator.setAttribute('fill', 'none');  // Important for open paths
+					indicator.setAttribute('stroke', i === 0 && j === 0 ? '#4682B4' : '#4682B488');
+					indicator.setAttribute('stroke-width', '0.04');
+					
+					ellipseGroup.appendChild(ellipse);
+					ellipseGroup.appendChild(indicator);
+					g.appendChild(ellipseGroup);
+
+					// Draw attractive points
+					for (let k = 0; k < attPoints; k++) {
+						const transformedPoint = transformPoint(basePoints.attractive[k], major, minor, rotationRad);
+						const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+						circle.setAttribute('cx', ellipseX + transformedPoint.x);
+						circle.setAttribute('cy', ellipseY + transformedPoint.y);
+						circle.setAttribute('r', '0.1');
+						circle.setAttribute('fill', '#FF0000');
+						g.appendChild(circle);
+					}
+					
+					// Draw repulsive points
+					for (let k = 0; k < repPoints; k++) {
+						const transformedPoint = transformPoint(basePoints.repulsive[k], major, minor, rotationRad);
+						const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+						circle.setAttribute('cx', ellipseX + transformedPoint.x);
+						circle.setAttribute('cy', ellipseY + transformedPoint.y);
+						circle.setAttribute('r', '0.1');
+						circle.setAttribute('fill', '#0000FF');
+						g.appendChild(circle);
+					}
+				}
+			}
+
+			calculateAreas();
+		}
+
+		Object.keys(controls).forEach(key => {
+			controls[key].addEventListener('input', (e) => {
+				updateValue(key, e.target.value);
+				drawCrystal();
+			});
+		});
+
+		// Initialize the base points and draw the crystal
+		generateInitialPoints();
+		drawCrystal();
+    </script>
+</body>
+</html>

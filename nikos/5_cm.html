@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>cm Crystal Packing Visualization</title>
+    <style>
+        /* Previous styles remain the same */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px 20px 20px 270px;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            gap: 40px;
+        }
+        .controls {
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            height: fit-content;
+        }
+        .control-group {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .control-section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2b6cb0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        .visualization {
+            min-width: 800px;
+        }
+        .area-display {
+            display: flex;
+            justify-content: space-around;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            width: 700px;
+        }
+        .area-metric {
+            text-align: center;
+            padding: 0 20px;
+        }
+        .metric-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2b6cb0;
+            margin-top: 5px;
+        }
+        .metric-label {
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>2D Crystal Packing (cm Symmetry)</h1>
+    <div class="container">
+        <div class="controls">
+            <div class="control-section">
+                <div class="section-title">Unit Cell Parameters</div>
+                <div class="control-group">
+                    <label>Vector a (Å): <span id="vectorAValue">10</span></label>
+                    <input type="range" id="vectorA" min="3" max="20" value="10" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Vector b (Å): <span id="vectorBValue">10</span></label>
+                    <input type="range" id="vectorB" min="3" max="20" value="10" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Cell Angle γ (degrees): <span id="gammaValue">90</span></label>
+                    <input type="range" id="gamma" min="90" max="90" value="90">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-title">Molecule Properties</div>
+                <div class="control-group">
+                    <label>Semi Major Axis: <span id="majorValue">2</span></label>
+                    <input type="range" id="major" min="0.1" max="10" value="2" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Semi Minor Axis: <span id="minorValue">1</span></label>
+                    <input type="range" id="minor" min="0.1" max="10" value="1" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Molecular Rotation (degrees): <span id="rotationValue">0</span></label>
+                    <input type="range" id="rotation" min="0" max="360" value="0">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-title">Position in Unit Cell</div>
+                <div class="control-group">
+                    <label>Position X: <span id="posXValue">50</span>%</label>
+                    <input type="range" id="posX" min="0" max="100" value="25">
+                </div>
+                <div class="control-group">
+                    <label>Position Y: <span id="posYValue">50</span>%</label>
+                    <input type="range" id="posY" min="0" max="100" value="25">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-title">Surface Points</div>
+                <div class="control-group">
+                    <label>Attractive Points: <span id="attPointsValue">1</span></label>
+                    <input type="range" id="attPoints" min="1" max="5" value="1">
+                </div>
+                <div class="control-group">
+                    <label>Repulsive Points: <span id="repPointsValue">1</span></label>
+                    <input type="range" id="repPoints" min="1" max="5" value="1">
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="visualization">
+                <svg id="crystal" width="800" height="800"></svg>
+            </div>
+            <div class="area-display">
+                <div class="area-metric">
+                    <div class="metric-label">Unit Cell Area</div>
+                    <div class="metric-value"><span id="areaValue">100.00</span> Å²</div>
+                </div>
+                <div class="area-metric">
+                    <div class="metric-label">Free Area</div>
+                    <div class="metric-value"><span id="freeAreaValue">75.00</span> Å²</div>
+                </div>
+                <div class="area-metric">
+                    <div class="metric-label">Occupancy</div>
+                    <div class="metric-value"><span id="occupancyValue">25.0</span>%</div>
+                </div>
+                <div class="area-metric">
+                    <div class="metric-label">Overlap</div>
+                    <div class="metric-value"><span id="overlapAreaValue">0.0</span>%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const controls = {
+            vectorA: document.getElementById('vectorA'),
+            vectorB: document.getElementById('vectorB'),
+            gamma: document.getElementById('gamma'),
+            major: document.getElementById('major'),
+            minor: document.getElementById('minor'),
+            rotation: document.getElementById('rotation'),
+            posX: document.getElementById('posX'),
+            posY: document.getElementById('posY'),
+            attPoints: document.getElementById('attPoints'),
+            repPoints: document.getElementById('repPoints')
+        };
+
+        const basePoints = {
+            attractive: [],
+            repulsive: []
+        };
+
+        function updateValue(id, value) {
+            document.getElementById(id + 'Value').textContent = Number(value).toFixed(1);
+        }
+
+        function generateInitialPoints() {
+            const maxPoints = 5;
+            for (let i = 0; i < maxPoints; i++) {
+                const t = Math.random() * 2 * Math.PI;
+                basePoints.attractive.push({
+                    t: t,
+                    x: Math.cos(t),
+                    y: Math.sin(t)
+                });
+            }
+            for (let i = 0; i < maxPoints; i++) {
+                const t = Math.random() * 2 * Math.PI;
+                basePoints.repulsive.push({
+                    t: t,
+                    x: Math.cos(t),
+                    y: Math.sin(t)
+                });
+            }
+        }
+
+        function transformPoint(point, major, minor, rotationRad, mirrorY = false) {
+            const scaledX = point.x * major;
+            const scaledY = point.y * minor * (mirrorY ? -1 : 1);
+            const rotatedX = scaledX * Math.cos(rotationRad) - scaledY * Math.sin(rotationRad);
+            const rotatedY = scaledX * Math.sin(rotationRad) + scaledY * Math.cos(rotationRad);
+            return {
+                x: rotatedX,
+                y: rotatedY
+            };
+        }
+
+        function calculateAreas() {
+            const vectorA = parseFloat(controls.vectorA.value);
+            const vectorB = parseFloat(controls.vectorB.value);
+            const gamma = parseInt(controls.gamma.value);
+            const major = parseFloat(controls.major.value);
+            const minor = parseFloat(controls.minor.value);
+            const rotation = parseInt(controls.rotation.value);
+            const posX = parseInt(controls.posX.value) / 100;
+            const posY = parseInt(controls.posY.value) / 100;
+
+            const gammaRad = (gamma * Math.PI) / 180;
+            const unitCellArea = vectorA * vectorB * Math.sin(gammaRad);
+            const numPoints = 1000000;
+            let occupiedPoints = 0;
+            const rotationRad = (rotation * Math.PI) / 180;
+
+            function isPointInEllipse(px, py, cx, cy, a, b, angleRad, mirrorY = false) {
+                const translatedX = px - cx;
+                const translatedY = py - cy;
+                const rotatedX = translatedX * Math.cos(-angleRad) - translatedY * Math.sin(-angleRad);
+                const rotatedY = (translatedX * Math.sin(-angleRad) + translatedY * Math.cos(-angleRad)) * (mirrorY ? -1 : 1);
+                return ((rotatedX * rotatedX) / (a * a) + (rotatedY * rotatedY) / (b * b)) <= 1;
+            }
+
+            for (let i = 0; i < numPoints; i++) {
+                const x = Math.random() * vectorA;
+                const y = Math.random() * (vectorB * Math.sin(gammaRad));
+                
+                // Original ellipse
+                const ellipse1X = posX * vectorA + posY * vectorB * Math.cos(gammaRad);
+                const ellipse1Y = posY * vectorB * Math.sin(gammaRad);
+                
+                // Centered ellipse
+                const ellipse2X = vectorA/2 + (ellipse1X - vectorA/2);
+                const ellipse2Y = vectorB * Math.sin(gammaRad)/2 + (ellipse1Y - vectorB * Math.sin(gammaRad)/2);
+                
+                // Mirrored ellipses
+                const ellipse3X = ellipse1X;
+                const ellipse3Y = vectorB * Math.sin(gammaRad) - ellipse1Y;
+                
+                const ellipse4X = ellipse2X;
+                const ellipse4Y = vectorB * Math.sin(gammaRad) - ellipse2Y;
+
+                if (isPointInEllipse(x, y, ellipse1X, ellipse1Y, major, minor, rotationRad) ||
+                    isPointInEllipse(x, y, ellipse2X, ellipse2Y, major, minor, rotationRad + Math.PI) ||
+                    isPointInEllipse(x, y, ellipse3X, ellipse3Y, major, minor, rotationRad, true) ||
+                    isPointInEllipse(x, y, ellipse4X, ellipse4Y, major, minor, rotationRad + Math.PI, true)) {
+                    occupiedPoints++;
+                }
+            }
+
+            const occupiedArea = (occupiedPoints / numPoints) * unitCellArea;
+            const freeArea = unitCellArea - occupiedArea;
+            const occupancyRatio = (occupiedArea / unitCellArea) * 100;
+            const overlapArea = 4 * Math.PI * major * minor - (occupiedPoints / numPoints) * unitCellArea;
+
+            document.getElementById('areaValue').textContent = unitCellArea.toFixed(2);
+            document.getElementById('freeAreaValue').textContent = freeArea.toFixed(2);
+            document.getElementById('occupancyValue').textContent = occupancyRatio.toFixed(2);
+            document.getElementById('overlapAreaValue').textContent = overlapArea.toFixed(2);
+        }
+
+        function drawCrystal() {
+            const svg = document.getElementById('crystal');
+            svg.innerHTML = '';
+
+            const vectorA = parseFloat(controls.vectorA.value);
+            const vectorB = parseFloat(controls.vectorB.value);
+            const gamma = parseInt(controls.gamma.value);
+            const major = parseFloat(controls.major.value);
+            const minor = parseFloat(controls.minor.value);
+            const rotation = parseInt(controls.rotation.value);
+            const posX = parseInt(controls.posX.value) / 100;
+            const posY = parseInt(controls.posY.value) / 100;
+
+            const gammaRad = (gamma * Math.PI) / 180;
+            const rotationRad = (rotation * Math.PI) / 180;
+
+            const aVector = { x: vectorA, y: 0 };
+            const bVector = {
+                x: vectorB * Math.cos(gammaRad),
+                y: vectorB * Math.sin(gammaRad)
+            };
+
+            // Draw mirror line
+            const mirrorLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            mirrorLine.setAttribute('x1', -vectorA);
+            mirrorLine.setAttribute('y1', bVector.y / 2);
+            mirrorLine.setAttribute('x2', vectorA * 2);
+            mirrorLine.setAttribute('y2', bVector.y / 2);
+            mirrorLine.setAttribute('stroke', '#999');
+            mirrorLine.setAttribute('stroke-width', '0.02');
+            mirrorLine.setAttribute('stroke-dasharray', '0.2,0.2');
+            svg.appendChild(mirrorLine);
+
+            const totalWidth = 3 * (Math.abs(aVector.x) + Math.abs(bVector.x));
+            const totalHeight = 3 * (Math.abs(aVector.y) + Math.abs(bVector.y));
+
+            const scaleFactor = Math.min(700 / totalWidth, 700 / totalHeight);
+
+            const viewBoxWidth = totalWidth * scaleFactor * 1.2;
+            const viewBoxHeight = totalHeight * scaleFactor * 1.2;
+            svg.setAttribute('viewBox', `${-viewBoxWidth/3.2} ${-viewBoxHeight/3.2} ${viewBoxWidth} ${viewBoxHeight}`);
+
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute('transform', `scale(${scaleFactor})`);
+            svg.appendChild(g);
+
+            const attPoints = parseInt(controls.attPoints.value);
+            const repPoints = parseInt(controls.repPoints.value);
+
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    const cellOriginX = i * aVector.x + j * bVector.x;
+					const cellOriginY = i * aVector.y + j * bVector.y;
+
+                    // Draw unit cell
+                    const cell = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    cell.setAttribute('d', `M ${cellOriginX} ${cellOriginY} 
+                        L ${cellOriginX + aVector.x} ${cellOriginY + aVector.y}
+                        L ${cellOriginX + aVector.x + bVector.x} ${cellOriginY + aVector.y + bVector.y}
+                        L ${cellOriginX + bVector.x} ${cellOriginY + bVector.y} Z`);
+                    cell.setAttribute('fill', 'none');
+                    cell.setAttribute('stroke', '#666');
+                    cell.setAttribute('stroke-width', '0.04');
+                    g.appendChild(cell);
+
+                    // Ellipse positions
+                    const ellipse1X = cellOriginX + posX * aVector.x + posY * bVector.x;
+                    const ellipse1Y = cellOriginY + posX * aVector.y + posY * bVector.y;
+
+                    // Centered ellipse (shifted by cell center)
+                    const ellipse2X = ellipse1X + aVector.x/2;
+                    const ellipse2Y = ellipse1Y + bVector.y/2;
+
+                    // Mirrored ellipses
+                    const ellipse3X = ellipse1X;
+                    const ellipse3Y = cellOriginY + bVector.y - (ellipse1Y - cellOriginY);
+
+                    const ellipse4X = ellipse2X;
+                    const ellipse4Y = cellOriginY + bVector.y - (ellipse2Y - cellOriginY);
+
+                    // Draw all four ellipses
+                    const ellipseConfigs = [
+                        { x: ellipse1X, y: ellipse1Y, rot: rotation, mirror: false, colors: ['#ADD8E6', '#4682B4'] },
+                        { x: ellipse2X, y: ellipse2Y, rot: rotation, mirror: false, colors: ['#D8E6AD', '#82B446'] },
+                        { x: ellipse3X, y: ellipse3Y, rot: -rotation, mirror: true, colors: ['#E6ADD8', '#B44682'] },
+                        { x: ellipse4X, y: ellipse4Y, rot: -rotation, mirror: true, colors: ['#E6D8AD', '#B482B4'] }
+                    ];
+
+                    ellipseConfigs.forEach((config, idx) => {
+                        const ellipseGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                        const transform = config.mirror ? 
+                            `translate(${config.x} ${config.y}) rotate(${config.rot}) scale(1,-1) translate(${-config.x} ${-config.y})` :
+                            `translate(${config.x} ${config.y}) rotate(${config.rot}) translate(${-config.x} ${-config.y})`;
+                        
+                        ellipseGroup.setAttribute('transform', transform);
+                        
+                        const ellipse = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                        ellipse.setAttribute('cx', config.x);
+                        ellipse.setAttribute('cy', config.y);
+                        ellipse.setAttribute('rx', major);
+                        ellipse.setAttribute('ry', minor);
+                        
+                        if (i === 0 && j === 0) {
+                            ellipse.setAttribute('fill', config.colors[0]);
+                            ellipse.setAttribute('stroke', config.colors[1]);
+                        } else {
+                            ellipse.setAttribute('fill', `${config.colors[0]}88`);
+                            ellipse.setAttribute('stroke', `${config.colors[1]}88`);
+                        }
+                        ellipse.setAttribute('stroke-width', '0.04');
+                        ellipse.setAttribute('opacity', '0.9');
+                        
+                        const indicator = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        indicator.setAttribute('x1', config.x);
+                        indicator.setAttribute('y1', config.y);
+                        indicator.setAttribute('x2', config.x + major);
+                        indicator.setAttribute('y2', config.y);
+                        indicator.setAttribute('stroke', i === 0 && j === 0 ? config.colors[1] : `${config.colors[1]}88`);
+                        indicator.setAttribute('stroke-width', '0.04');
+                        
+                        ellipseGroup.appendChild(ellipse);
+                        ellipseGroup.appendChild(indicator);
+                        g.appendChild(ellipseGroup);
+
+                        // Draw surface points
+                        const pointsRot = (config.rot * Math.PI) / 180;
+                        for (let k = 0; k < attPoints; k++) {
+                            const transformedPoint = transformPoint(
+                                basePoints.attractive[k], 
+                                major, 
+                                minor, 
+                                pointsRot, 
+                                config.mirror
+                            );
+                            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                            circle.setAttribute('cx', config.x + transformedPoint.x);
+                            circle.setAttribute('cy', config.y + transformedPoint.y);
+                            circle.setAttribute('r', '0.1');
+                            circle.setAttribute('fill', '#FF0000');
+                            g.appendChild(circle);
+                        }
+                        
+                        for (let k = 0; k < repPoints; k++) {
+                            const transformedPoint = transformPoint(
+                                basePoints.repulsive[k], 
+                                major, 
+                                minor, 
+                                pointsRot, 
+                                config.mirror
+                            );
+                            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                            circle.setAttribute('cx', config.x + transformedPoint.x);
+                            circle.setAttribute('cy', config.y + transformedPoint.y);
+                            circle.setAttribute('r', '0.1');
+                            circle.setAttribute('fill', '#0000FF');
+                            g.appendChild(circle);
+                        }
+                    });
+                }
+            }
+
+            calculateAreas();
+        }
+
+        Object.keys(controls).forEach(key => {
+            controls[key].addEventListener('input', (e) => {
+                updateValue(key, e.target.value);
+                drawCrystal();
+            });
+        });
+
+        generateInitialPoints();
+        drawCrystal();
+    </script>
+</body>
+</html>
