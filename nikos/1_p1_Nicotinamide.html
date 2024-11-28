@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>p1 Crystal Packing Visualization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px 20px 20px 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+        }
+        .controls {
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            height: fit-content;
+            min-width: 280px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .control-section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2b6cb0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        .slider-value {
+            display: inline-block;
+            margin-left: 10px;
+            min-width: 40px;
+        }
+        .visualization-container {
+            display: flex;
+            gap: 20px;
+        }
+        .visualization {
+            min-width: 800px;
+        }
+        .overlap-info {
+            margin-top: 4px;
+            font-size: 0.9em;
+            color: #2D3748;
+        }
+        .area-display {
+            display: flex;
+            justify-content: space-around;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: -40px;
+            width: 700px;
+        }
+        .area-metric {
+            text-align: center;
+            padding: 0 20px;
+        }
+        .metric-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2b6cb0;
+            margin-top: 5px;
+        }
+        .metric-label {
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+        .contacts-container {
+            width: 280px;
+            height: fit-content;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            color: #2b6cb0;
+        }
+        #contacts-list {
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .contact-item {
+            padding: 4px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+			color: #e53e3e;
+        }
+        .contact-item:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <h1>2D Crystal Packing of Nicotinamide (p1 Symmetry)</h1>
+    <div class="container">
+        <div class="controls">
+            <div class="control-section">
+                <div class="section-title">Unit Cell Parameters</div>
+                <div class="control-group">
+                    <label>Vector a (Å): <span id="vectorAValue">10</span></label>
+                    <input type="range" id="vectorA" min="3" max="20" value="10" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Vector b (Å): <span id="vectorBValue">10</span></label>
+                    <input type="range" id="vectorB" min="3" max="20" value="10" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Cell Angle γ (degrees): <span id="gammaValue">90</span></label>
+                    <input type="range" id="gamma" min="30" max="150" value="90">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-title">Molecule Properties</div>
+                <div class="control-group">
+                    <label>Semi Major Axis: <span id="majorValue">2</span></label>
+                    <input type="range" id="major" min="0.1" max="10" value="2" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Semi Minor Axis: <span id="minorValue">1</span></label>
+                    <input type="range" id="minor" min="0.1" max="10" value="1" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label>Molecular Rotation (degrees): <span id="rotationValue">0</span></label>
+                    <input type="range" id="rotation" min="0" max="360" value="0">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-title">Position in Unit Cell</div>
+                <div class="control-group">
+                    <label>Position X: <span id="posXValue">50</span>%</label>
+                    <input type="range" id="posX" min="0" max="100" value="50">
+                </div>
+                <div class="control-group">
+                    <label>Position Y: <span id="posYValue">50</span>%</label>
+                    <input type="range" id="posY" min="0" max="100" value="50">
+                </div>
+            </div>
+        </div>
+        <div class="visualization-container">
+            <div>
+                <div class="visualization">
+                    <svg id="crystal" width="800" height="800"></svg>
+                </div>
+                <div class="area-display">
+                    <div class="area-metric">
+                        <div class="metric-label">Unit Cell Area</div>
+                        <div class="metric-value"><span id="areaValue">100.00</span> Å²</div>
+                    </div>
+                    <div class="area-metric">
+                        <div class="metric-label">Free Area</div>
+                        <div class="metric-value"><span id="freeAreaValue">75.00</span> Å²</div>
+                    </div>
+                    <div class="area-metric">
+                        <div class="metric-label">Occupancy</div>
+                        <div class="metric-value"><span id="occupancyValue">25.0</span>%</div>
+                    </div>
+                    <div class="area-metric">
+                        <div class="metric-label">Overlap</div>
+                        <div class="metric-value"><span id="overlapAreaValue">0.0</span>%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="contacts-container">
+                <h3>Molecular Contacts</h3>
+                <div id="contacts-list"></div>
+            </div>
+        </div>
+    </div>
+
+     <script>
+        // Define the nicotinamide molecule structure
+		const molecule = {
+			atoms: [
+				{ label: 'C1', element: 'C', x: 2.598, y: 0.017 },
+				{ label: 'N1', element: 'N', x: 1.903, y: 1.221 },
+				{ label: 'C2', element: 'C', x: 0.513, y: 1.221 },
+				{ label: 'C3', element: 'C', x: -0.182, y: 0.017 },
+				{ label: 'C4', element: 'C', x: 0.513, y: -1.187 },
+				{ label: 'C5', element: 'C', x: 1.903, y: -1.187 },
+				{ label: 'C6', element: 'C', x: -1.722, y: 0.017 },
+				{ label: 'O1', element: 'O', x: -2.340, y: 1.086 },
+				{ label: 'N2', element: 'N', x: -2.390, y: -1.139 },
+				{ label: 'H1', element: 'H', x: 3.678, y: 0.017 },
+				{ label: 'H2', element: 'H', x: -0.027, y: 2.156 },
+				{ label: 'H3', element: 'H', x: -0.027, y: -2.122 },
+				{ label: 'H4', element: 'H', x: 2.443, y: -2.122 },
+				{ label: 'H5', element: 'H', x: -3.400, y: -1.139 },
+				{ label: 'H6', element: 'H', x: -1.885, y: -2.014 }
+			],
+			bonds: [
+				['C1', 'H1'], ['C1', 'N1'], ['C1', 'C5'],
+				['C2', 'N1'], ['C2', 'H2'], ['C2', 'C3'],
+				['C3', 'C6'], ['C3', 'C4'],
+				['C4', 'C5'], ['C4', 'H3'],
+				['C5', 'H4'],
+				['C6', 'O1'], ['C6', 'N2'],
+				['N2', 'H5'], ['N2', 'H6']
+			]
+		};
+
+		// Add color mapping for atoms
+		const atomColors = {
+			'C': '#808080',
+			'N': '#0000FF',
+			'O': '#FF0000',
+			'H': '#404040'
+		};
+
+		// Add van der Waals radii data
+		const vdwRadii = {
+			'H': 1.20,
+			'C': 1.70,
+			'N': 1.55,
+			'O': 1.52
+		};
+
+		// Function to calculate distance between two points
+		function calculateDistance(x1, y1, x2, y2) {
+			return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+		}
+
+		// Function to draw a single molecule
+		function drawMolecule(g, centerX, centerY, scale = 1.0, rotation = 0) {
+			const moleculeGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+			moleculeGroup.setAttribute('transform', 
+				`translate(${centerX} ${centerY}) rotate(${rotation}) scale(${scale})`);
+
+			// Draw bonds first (so they appear behind atoms)
+			molecule.bonds.forEach(([atom1Label, atom2Label]) => {
+				const atom1 = molecule.atoms.find(a => a.label === atom1Label);
+				const atom2 = molecule.atoms.find(a => a.label === atom2Label);
+				
+				const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+				line.setAttribute('x1', atom1.x);
+				line.setAttribute('y1', atom1.y);
+				line.setAttribute('x2', atom2.x);
+				line.setAttribute('y2', atom2.y);
+				line.setAttribute('stroke', '#404040');
+				line.setAttribute('stroke-width', '0.2');
+				moleculeGroup.appendChild(line);
+			});
+
+			// Draw atoms
+			molecule.atoms.forEach(atom => {
+				const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+				circle.setAttribute('cx', atom.x);
+				circle.setAttribute('cy', atom.y);
+				circle.setAttribute('r', atom.element === 'H' ? '0.2' : '0.4');
+				circle.setAttribute('fill', atomColors[atom.element]);
+				moleculeGroup.appendChild(circle);
+			});
+
+			g.appendChild(moleculeGroup);
+		}
+
+		// Function to transform coordinates
+		function transformCoordinates(atom, cellI, cellJ, centerX, centerY, rotation, aVector, bVector) {
+			const rotationRad = (rotation * Math.PI) / 180;
+			
+			// First rotate the atom around the molecule center
+			const rotatedX = (atom.x * Math.cos(rotationRad) - atom.y * Math.sin(rotationRad));
+			const rotatedY = (atom.x * Math.sin(rotationRad) + atom.y * Math.cos(rotationRad));
+			
+			// Then translate to the cell position
+			return {
+				x: rotatedX + centerX + cellI * aVector.x + cellJ * bVector.x,
+				y: rotatedY + centerY + cellI * aVector.y + cellJ * bVector.y
+			};
+		}
+
+		const controls = {
+			vectorA: document.getElementById('vectorA'),
+			vectorB: document.getElementById('vectorB'),
+			gamma: document.getElementById('gamma'),
+			major: document.getElementById('major'),
+			minor: document.getElementById('minor'),
+			rotation: document.getElementById('rotation'),
+			posX: document.getElementById('posX'),
+			posY: document.getElementById('posY')
+		};
+
+		function updateValue(id, value) {
+			document.getElementById(id + 'Value').textContent = Number(value).toFixed(1);
+		}
+
+		function calculateAreas() {
+			const vectorA = parseFloat(controls.vectorA.value);
+			const vectorB = parseFloat(controls.vectorB.value);
+			const gamma = 180.0 - parseInt(controls.gamma.value);
+			const major = parseFloat(controls.major.value);
+			const minor = parseFloat(controls.minor.value);
+			const rotation = -parseInt(controls.rotation.value);
+			const posX = parseInt(controls.posX.value) / 100;
+			const posY = 1.0 - parseInt(controls.posY.value) / 100;
+
+			const gammaRad = (gamma * Math.PI) / 180;
+			const unitCellArea = vectorA * vectorB * Math.sin(gammaRad);
+
+			// Monte Carlo integration for occupied area
+			const numPoints = 100000;
+			let occupiedPoints = 0;
+
+			function isPointInEllipse(px, py, cx, cy, a, b, angleRad) {
+				const translatedX = px - cx;
+				const translatedY = py - cy;
+				const rotatedX = translatedX * Math.cos(-angleRad) - translatedY * Math.sin(-angleRad);
+				const rotatedY = translatedX * Math.sin(-angleRad) + translatedY * Math.cos(-angleRad);
+				return ((rotatedX * rotatedX) / (a * a) + (rotatedY * rotatedY) / (b * b)) <= 1;
+			}
+
+			for (let k = 0; k < numPoints; k++) {
+				const x = Math.random() * vectorA;
+				const y = Math.random() * (vectorB * Math.sin(gammaRad));
+				
+				for (let i = -1; i <= 1; i++) {
+					for (let j = -1; j <= 1; j++) {
+						const cellOriginX = i * vectorA + j * vectorB * Math.cos(gammaRad);
+						const cellOriginY = i * 0 + j * vectorB * Math.sin(gammaRad);
+						
+						const ellipseX = cellOriginX + posX * vectorA + posY * vectorB * Math.cos(gammaRad);
+						const ellipseY = cellOriginY + posY * vectorB * Math.sin(gammaRad);
+						
+						if (isPointInEllipse(x, y, ellipseX, ellipseY, major, minor, rotation * Math.PI / 180)) {
+							occupiedPoints++;
+						}
+					}
+				}
+			}
+
+			const occupiedArea = (occupiedPoints / numPoints) * unitCellArea;
+			const freeArea = unitCellArea - occupiedArea;
+			const occupancyRatio = (occupiedArea / unitCellArea) * 100;
+			const overlapArea = Math.max(0, (Math.PI * major * minor - occupiedArea) / (Math.PI * major * minor) * 100);
+
+			document.getElementById('areaValue').textContent = unitCellArea.toFixed(2);
+			document.getElementById('freeAreaValue').textContent = freeArea.toFixed(2);
+			document.getElementById('occupancyValue').textContent = occupancyRatio.toFixed(1);
+			document.getElementById('overlapAreaValue').textContent = overlapArea.toFixed(1);
+		}
+
+		function analyzeMolecularContacts() {
+			const contacts = [];
+			
+			// Get current parameters
+			const vectorA = parseFloat(controls.vectorA.value);
+			const vectorB = parseFloat(controls.vectorB.value);
+			const gamma = 180.0 - parseInt(controls.gamma.value);
+			const rotation = -parseInt(controls.rotation.value);
+			const posX = parseInt(controls.posX.value) / 100;
+			const posY = 1.0 - parseInt(controls.posY.value) / 100;
+
+			const gammaRad = (gamma * Math.PI) / 180;
+			const rotationRad = (rotation * Math.PI) / 180;
+			
+			// Define unit cell vectors
+			const aVector = { x: vectorA, y: 0 };
+			const bVector = {
+				x: vectorB * Math.cos(gammaRad),
+				y: vectorB * Math.sin(gammaRad)
+			};
+
+			// Get reference molecule position (center of reference cell)
+			const refMoleculeCenterX = posX * aVector.x + posY * bVector.x;
+			const refMoleculeCenterY = posX * aVector.y + posY * bVector.y;
+
+			// Function to transform atom coordinates
+			function transformAtomCoords(atom, centerX, centerY) {
+				// First rotate around molecule center (0,0)
+				const rotatedX = atom.x * Math.cos(rotationRad) - atom.y * Math.sin(rotationRad);
+				const rotatedY = atom.x * Math.sin(rotationRad) + atom.y * Math.cos(rotationRad);
+				
+				// Then translate to molecule position
+				return {
+					x: rotatedX + centerX,
+					y: rotatedY + centerY
+				};
+			}
+
+			// Process each atom in reference molecule (central cell)
+			molecule.atoms.forEach(refAtom => {
+				const refAtomPos = transformAtomCoords(refAtom, refMoleculeCenterX, refMoleculeCenterY);
+
+				// Check neighboring cells (including same cell for different atoms)
+				for (let i = -1; i <= 1; i++) {
+					for (let j = -1; j <= 1; j++) {
+						if (i === 0 && j === 0) continue;
+					
+						// Calculate center position for molecule in this cell
+						const neighborCenterX = refMoleculeCenterX + i * aVector.x + j * bVector.x;
+						const neighborCenterY = refMoleculeCenterY + i * aVector.y + j * bVector.y;
+
+						// Check against all atoms in neighboring molecule
+						molecule.atoms.forEach(neighborAtom => {
+							// Skip self-interaction
+							if (i === 0 && j === 0 && refAtom.label === neighborAtom.label) return;
+
+							const neighborAtomPos = transformAtomCoords(neighborAtom, neighborCenterX, neighborCenterY);
+
+							const distance = calculateDistance(
+								refAtomPos.x, refAtomPos.y,
+								neighborAtomPos.x, neighborAtomPos.y
+							);
+
+							const vdwSum = vdwRadii[refAtom.element] + vdwRadii[neighborAtom.element];
+
+							// Only record contacts shorter than vdW sum
+							if (distance < vdwSum) {
+								contacts.push({
+									atom1: refAtom.label,
+									atom2: neighborAtom.label,
+									distance: distance.toFixed(3),
+									cell: `(${i},${j})`,
+									vdwSum: vdwSum.toFixed(3),
+									strength: (vdwSum - distance).toFixed(3)
+								});
+							}
+						});
+					}
+				}
+			});
+
+			return contacts;
+		}
+
+		function displayContacts(contacts) {
+			const contactsList = document.getElementById('contacts-list');
+			
+			// Sort contacts by distance
+			contacts.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+			
+			// Create contact list HTML with more detailed information
+			contactsList.innerHTML = contacts.map(contact => `
+				<div class="contact-item">
+					<span style="color: #2b6cb0; font-weight: bold;">${contact.atom1}-${contact.atom2}</span>
+					<span style="color: #718096;"> Length: </span>
+					<span style="color: #e53e3e;">${contact.distance}Å</span>
+					<span style="color: #718096;"> Strength: </span>
+					<span style="color: #e53e3e;">${contact.strength}Å</span>
+				</div>
+			`).join('');
+			
+			// Add a message if no contacts found
+			if (contacts.length === 0) {
+				contactsList.innerHTML = '<div class="contact-item">No contacts found below vdW sum</div>';
+			} else {
+				// Add contact count
+				contactsList.innerHTML = `<div style="margin-bottom: 10px; color: #4a5568;">Found ${contacts.length} contacts below vdW sum</div>` + contactsList.innerHTML;
+			}
+		}
+
+		function drawCrystal() {
+			const svg = document.getElementById('crystal');
+			svg.innerHTML = '';
+
+			const vectorA = parseFloat(controls.vectorA.value);
+			const vectorB = parseFloat(controls.vectorB.value);
+			const gamma = 180.0 - parseInt(controls.gamma.value);
+			const major = parseFloat(controls.major.value);
+			const minor = parseFloat(controls.minor.value);
+			const rotation = -parseInt(controls.rotation.value);
+			const posX = parseInt(controls.posX.value) / 100;
+			const posY = 1.0 - parseInt(controls.posY.value) / 100;
+
+			const gammaRad = (gamma * Math.PI) / 180;
+			const rotationRad = (rotation * Math.PI) / 180;
+
+			const aVector = { x: vectorA, y: 0 };
+			const bVector = {
+				x: vectorB * Math.cos(gammaRad),
+				y: vectorB * Math.sin(gammaRad)
+			};
+
+			// Calculate reference molecule center (in central cell)
+			const refMoleculeCenterX = posX * aVector.x + posY * bVector.x;
+			const refMoleculeCenterY = posX * aVector.y + posY * bVector.y;
+
+			const totalWidth = 3 * (Math.abs(aVector.x) + Math.abs(bVector.x));
+			const totalHeight = 3 * (Math.abs(aVector.y) + Math.abs(bVector.y));
+
+			const scaleFactor = Math.min(700 / totalWidth, 700 / totalHeight);
+
+			const viewBoxWidth = totalWidth * scaleFactor * 1.2;
+			const viewBoxHeight = totalHeight * scaleFactor * 1.2;
+			svg.setAttribute('viewBox', `${-viewBoxWidth/3.2} ${-viewBoxHeight/3.2} ${viewBoxWidth} ${viewBoxHeight}`);
+
+			const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+			g.setAttribute('transform', `scale(${scaleFactor})`);
+			svg.appendChild(g);
+
+			// Draw unit cells and molecules first
+			for (let i = -1; i <= 1; i++) {
+				for (let j = -1; j <= 1; j++) {
+					const cellOriginX = i * aVector.x + j * bVector.x;
+					const cellOriginY = i * aVector.y + j * bVector.y;
+
+					// Draw unit cell
+					const cell = document.createElementNS("http://www.w3.org/2000/svg", "path");
+					cell.setAttribute('d', `M ${cellOriginX} ${cellOriginY} 
+						L ${cellOriginX + aVector.x} ${cellOriginY + aVector.y}
+						L ${cellOriginX + aVector.x + bVector.x} ${cellOriginY + aVector.y + bVector.y}
+						L ${cellOriginX + bVector.x} ${cellOriginY + bVector.y} Z`);
+					cell.setAttribute('fill', 'none');
+					cell.setAttribute('stroke', '#666');
+					cell.setAttribute('stroke-width', '0.04');
+					g.appendChild(cell);
+
+					// Draw ellipse and molecule
+					const ellipseX = cellOriginX + posX * aVector.x + posY * bVector.x;
+					const ellipseY = cellOriginY + posX * aVector.y + posY * bVector.y;
+
+					const ellipseGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+					ellipseGroup.setAttribute('transform', `translate(${ellipseX} ${ellipseY}) rotate(${rotation}) translate(${-ellipseX} ${-ellipseY})`);
+					
+					const ellipse = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+					ellipse.setAttribute('cx', ellipseX);
+					ellipse.setAttribute('cy', ellipseY);
+					ellipse.setAttribute('rx', major);
+					ellipse.setAttribute('ry', minor);
+					
+					if (i === 0 && j === 0) {
+						ellipse.setAttribute('fill', '#ADD8E688');
+						ellipse.setAttribute('stroke', '#4682B4');
+					} else {
+						ellipse.setAttribute('fill', '#ADD8E644');
+						ellipse.setAttribute('stroke', '#4682B488');
+					}
+					ellipse.setAttribute('stroke-width', '0.04');
+					
+					const indicator = document.createElementNS("http://www.w3.org/2000/svg", "path");
+					indicator.setAttribute('d', `M ${ellipseX + major} ${ellipseY} 
+											 L ${ellipseX} ${ellipseY} 
+											 L ${ellipseX} ${ellipseY - minor}`);
+					indicator.setAttribute('fill', 'none');
+					indicator.setAttribute('stroke', i === 0 && j === 0 ? '#4682B4' : '#4682B488');
+					indicator.setAttribute('stroke-width', '0.04');
+					
+					ellipseGroup.appendChild(ellipse);
+					ellipseGroup.appendChild(indicator);
+					g.appendChild(ellipseGroup);
+					
+					drawMolecule(g, ellipseX, ellipseY, 1.0, rotation);
+				}
+			}
+
+			// Analyze contacts and draw contact lines
+			const contacts = analyzeMolecularContacts();
+			
+			// Draw contact lines
+			contacts.forEach(contact => {
+				// Get coordinates for first atom (reference molecule in central cell)
+				const atom1 = molecule.atoms.find(a => a.label === contact.atom1);
+				const rotationRad = (rotation * Math.PI) / 180;
+				
+				// Rotate atom1 coordinates
+				const atom1RotX = atom1.x * Math.cos(rotationRad) - atom1.y * Math.sin(rotationRad);
+				const atom1RotY = atom1.x * Math.sin(rotationRad) + atom1.y * Math.cos(rotationRad);
+				
+				// Translate to reference molecule position
+				const atom1X = atom1RotX + refMoleculeCenterX;
+				const atom1Y = atom1RotY + refMoleculeCenterY;
+				
+				// Get coordinates for second atom
+				const atom2 = molecule.atoms.find(a => a.label === contact.atom2);
+				const [cellI, cellJ] = contact.cell.slice(1, -1).split(',').map(Number);
+				
+				// Calculate center of the neighboring molecule
+				const neighborCenterX = refMoleculeCenterX + cellI * aVector.x + cellJ * bVector.x;
+				const neighborCenterY = refMoleculeCenterY + cellI * aVector.y + cellJ * bVector.y;
+				
+				// Rotate atom2 coordinates
+				const atom2RotX = atom2.x * Math.cos(rotationRad) - atom2.y * Math.sin(rotationRad);
+				const atom2RotY = atom2.x * Math.sin(rotationRad) + atom2.y * Math.cos(rotationRad);
+				
+				// Translate to neighbor molecule position
+				const atom2X = atom2RotX + neighborCenterX;
+				const atom2Y = atom2RotY + neighborCenterY;
+				
+				// Draw contact line
+				const contactLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+				contactLine.setAttribute('x1', atom1X);
+				contactLine.setAttribute('y1', atom1Y);
+				contactLine.setAttribute('x2', atom2X);
+				contactLine.setAttribute('y2', atom2Y);
+				contactLine.setAttribute('stroke', '#FF0000');
+				contactLine.setAttribute('stroke-width', '0.04');
+				contactLine.setAttribute('stroke-dasharray', '0.1 0.1');
+				g.appendChild(contactLine);
+			});
+
+			displayContacts(contacts);
+			calculateAreas();
+		}
+
+		// Event listeners for controls
+		Object.keys(controls).forEach(key => {
+			controls[key].addEventListener('input', (e) => {
+				updateValue(key, e.target.value);
+				drawCrystal();
+			});
+		});
+
+		// Initial draw
+		drawCrystal();
+    </script>
+</body>
+</html>
